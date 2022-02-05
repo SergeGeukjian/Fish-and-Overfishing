@@ -1,0 +1,351 @@
+# %% [markdown]
+# ## Loading Libraries & Data
+
+# %%
+import seaborn as sns
+import matplotlib as mtpl 
+import plotly as plt
+import numpy as np
+import pandas as pd
+import sys
+import getopt
+import plotly.express as px
+import openpyxl
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "all"
+print(np.__version__)
+print(pd.__version__)
+
+# %%
+farmed = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/aquaculture-farmed-fish-production.csv")
+captured_vs_farmed = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/capture-fisheries-vs-aquaculture.csv")
+captured = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/capture-fishery-production.csv")
+consumption = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/fish-and-seafood-consumption-per-capita.csv")
+stock = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/fish-stocks-within-sustainable-levels.csv")
+fishery = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/global-fishery-catch-by-sector.csv")
+production = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/seafood-and-fish-production-thousand-tonnes.csv")
+
+# %% [markdown]
+# ## Cross checking the "captured" and the "farmed" tables with the "captured_vs_farmed" table
+
+# %%
+captured_vs_farmed.columns = captured_vs_farmed.columns.str.replace(' ', '_')
+captured_vs_farmed['Capture_fisheries_production_(metric_tons)'] = captured_vs_farmed['Capture_fisheries_production_(metric_tons)'].replace(np.nan,0)
+captured_vs_farmed['Aquaculture_production_(metric_tons)'] = captured_vs_farmed['Aquaculture_production_(metric_tons)'].replace(np.nan,0)
+
+#Checking if all "captured" data is found in the captured_vs_farmed table
+sum(captured["Capture fisheries production (metric tons)"]) - sum(captured_vs_farmed['Capture_fisheries_production_(metric_tons)'])
+
+#Checking if all "farmed" data is found in the captured_vs_farmed table
+sum(farmed["Aquaculture production (metric tons)"]) - sum(captured_vs_farmed['Aquaculture_production_(metric_tons)'])
+
+# %% [markdown]
+# ## Removing the regions that are groups from the captured_vs_farmed and from consumption
+
+# %%
+ToExclude = (["Americas", "Africa Eastern and Southern", "Africa Western and Central", "Arab World", "Asia", "Asia, Central", "Australia & New Zealand", "Caribbean", "Central America", "Central Europe and the Baltics", "Channel Islands", "Eastern Africa", "Eastern Asia", "Eastern Europe", "Ethiopia PDR", "Europe", "Europe, Western", "European Union", "Early-demographic dividend", "East Asia & Pacific", "East Asia & Pacific (IDA & IBRD)", "East Asia & Pacific (excluding high income)", "Equatorial Guinea", "Euro area", "Europe & Central Asia", "Europe & Central Asia (IDA & IBRD)", "Europe & Central Asia (excluding high income)", "Fragile and conflict affected situations", "Heavily indebted poor countries (HIPC)", "High income", "IBRD only", "IDA & IBRD total", "IDA blend", "IDA only", "IDA total", "Land Locked Developing Countries", "Least Developed Countries", "Low Income Food Deficit Countries", "Late-demographic dividend", "Latin America & Caribbean", "Latin America & Caribbean (IDA & IBRD)", "Latin America & Caribbean (excluding high income)", "Least developed countries: UN classification", "Low & middle income", "Low income", "Lower middle income", "Middle East & North Africa", "Middle East & North Africa (IDA & IBRD)", "Middle East & North Africa (excluding high income)", "Middle income", "Middle Africa", "Net Food Importing Developing Countries", "Netherlands Antilles", "Northern Africa", "Northern America", "Northern Europe", "North America", "OECD members", "Other small states", "Pacific island small states", "Post-demographic dividend", "Pre-demographic dividend", "Oceania", "Serbia and Montenegro", "Small island developing States", "South AmericaSouth America", "South Eastern Asia", "Southern Africa", "Southern Asia", "Southern Europe", "Sudan (former)", "Small states", "South Asia", "South Asia (IDA & IBRD)", "South Sudan", "Sub-Saharan Africa", "Sub-Saharan Africa (IDA & IBRD)", "Sub-Saharan Africa (excluding high income)", "Upper middle income", "USSR", "Western Africa", "Western Asia", "World"])
+
+captured_vs_farmed['Entity'] = captured_vs_farmed[~captured_vs_farmed['Entity'].isin(ToExclude)]
+captured_vs_farmed = captured_vs_farmed.dropna()
+
+consumption['Entity'] = consumption[~consumption['Entity'].isin(ToExclude)]
+consumption = consumption.dropna()
+
+
+# %% [markdown]
+# ## Visualizing the Timeline graph of the captured_vs_farmed
+
+# %%
+cap_vs_farm_time = captured_vs_farmed[['Year', 'Aquaculture_production_(metric_tons)', 'Capture_fisheries_production_(metric_tons)']]
+
+cap_vs_farm_time_pivoted = cap_vs_farm_time.melt(id_vars = "Year", var_name = "Aquaculture/Capture", value_name = "Metric Tones")
+cap_vs_farm_time_pivoted['Aquaculture/Capture'] = cap_vs_farm_time_pivoted['Aquaculture/Capture'].replace("Capture_fisheries_production_(metric_tons)", "Captured")
+cap_vs_farm_time_pivoted['Aquaculture/Capture'] = cap_vs_farm_time_pivoted['Aquaculture/Capture'].replace("Aquaculture_production_(metric_tons)", "Aquaculture")
+
+
+
+df = cap_vs_farm_time_pivoted.groupby(['Year', 'Aquaculture/Capture']).sum()['Metric Tones']
+df.unstack().plot(marker="o")
+mtpl.pyplot.xticks(rotation=45)
+mtpl.pyplot.title('Aquaculture vs Capture Trend Timeline')
+mtpl.pyplot.xlabel('Year') 
+mtpl.pyplot.ylabel('Metric Tones')
+mtpl.pyplot.grid(True)
+x = [1960, 1965, 1970,1975,1980,1985,1990,1995,2000,2005,2010,2015,2020]
+mtpl.pyplot.xticks(x,x)
+
+
+# %% [markdown]
+# As we see here Aquaculture has evolved throughout the years. It's starting to incline more steeply around the 1990s and around 2010-2011 and on the contrary the Capture amount has been decreasing after that year. This means that people are realizing the increase of the demand on the fish food and they also, with technology and education, are realizing that aquaculture may be a good way to save the aqua natural life and avoid endangering species.
+
+# %% [markdown]
+# ## Consumption of seafood related data (LineChart)
+
+# %%
+consumption_time = consumption[['Year', 'Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)']]
+
+df2 = consumption_time.groupby(['Year']).sum()['Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)'] 
+df2.plot(marker="o")
+mtpl.pyplot.xticks(rotation=45)
+mtpl.pyplot.title('Consumption Timeline')
+mtpl.pyplot.xlabel('Year') 
+mtpl.pyplot.ylabel('kg/capita/year')
+mtpl.pyplot.grid(True)
+x = [1960, 1965, 1970,1975,1980,1985,1990,1995,2000,2005,2010,2015,2020]
+mtpl.pyplot.xticks(x,x)
+
+
+
+# %% [markdown]
+# The consumption of seafood is increasing over time and of course this relates to the worldwide population increase and also the number of people who are choosing to make their main source of protein the seafood, mainly fish.
+# 
+# In 2014 though we can see a very sharp decrease in the consumption from 4000-4100 to 3300-3400 kg/capita/yr and it continues to be on the decline after that as well.
+# 
+
+# %% [markdown]
+# ## Consumption of seafood related data (Full TreeMap)
+
+# %%
+colors=['#fae588','#f79d65','#f9dc5c','#e8ac65','#e76f51','#ef233c','#b7094c']
+consumption_Entity = consumption[['Entity','Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)']]
+fig = px.treemap(data_frame=consumption_Entity,path=['Entity'],values='Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)',width=800, height=400,hover_data=None, hover_name=None)
+fig.data[0].textinfo = 'label+text+value'
+fig.update_layout(
+    treemapcolorway = colors, #defines the colors in the treemap
+    margin = dict(t=5, l=5, r=5, b=5))
+
+
+# %% [markdown]
+# ## Consumption of seafood related data (Top 20 Countries TreeMap)
+
+# %%
+colors=['#fae588','#f79d65','#f9dc5c','#e8ac65','#e76f51','#ef233c','#b7094c']
+consumption_Entity_top20 = consumption[['Entity','Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)']]
+consumption_Entity_top20 = consumption_Entity_top20.groupby('Entity', as_index=False).agg({'Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)':'sum'})
+consumption_Entity_top20 = consumption_Entity_top20.sort_values('Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)',ascending=False).head(20)
+fig2 = px.treemap(data_frame=consumption_Entity_top20,path=['Entity'],values='Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)',width=800, height=400)
+fig2.data[0].textinfo = 'label+text+value'
+fig2.update_layout(
+    treemapcolorway = colors, #defines the colors in the treemap
+    margin = dict(t=5, l=5, r=5, b=5))
+
+
+# %% [markdown]
+# The Maldives hold the most consumpton of seafood by 6,888.51 kg/capita/yr followed by Iceland and Kribati. It's interesting to see here that in the top 3 we can't find the biggest countries in the world like the United States, Russia or even China, instead we find countries that are islands with much less population with higher consumption of seafood.
+
+# %% [markdown]
+# ## Consumption of seafood related data (BarChart)
+
+# %%
+colors=['#fae588','#f79d65','#f9dc5c','#e8ac65','#e76f51','#ef233c','#b7094c']
+consumption_Entity_top20_bar = consumption[['Entity','Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)']]
+consumption_Entity_top20_bar = consumption_Entity_top20_bar.groupby('Entity', as_index=False).agg({'Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)':'sum'})
+consumption_Entity_top20_bar = consumption_Entity_top20_bar.sort_values('Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)',ascending=False).head(20)
+
+fig3 = sns.barplot(x = consumption_Entity_top20_bar['Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)'], y = consumption_Entity_top20_bar['Entity'],palette = "rocket")
+mtpl.pyplot.title('Consumption of Top 20 Countries')
+mtpl.pyplot.xlabel('kg/capita/yr')
+mtpl.pyplot.grid(True)
+
+#Enabling the display of values per country
+def show_values_on_bars(axs, h_v="v", space=0.4):
+    def _show_on_single_plot(ax):
+        if h_v == "v":
+            for p in ax.patches:
+                _x = p.get_x() + p.get_width() / 2
+                _y = p.get_y() + p.get_height()
+                value = int(p.get_height())
+                ax.text(_x, _y, value, ha="center") 
+        elif h_v == "h":
+            for p in ax.patches:
+                _x = p.get_x() + p.get_width() + float(space)
+                _y = p.get_y() + p.get_height()
+                value = int(p.get_width())
+                ax.text(_x, _y, value, ha="left")
+
+    if isinstance(axs, np.ndarray):
+        for idx, ax in np.ndenumerate(axs):
+            _show_on_single_plot(ax)
+    else:
+        _show_on_single_plot(axs)
+
+
+show_values_on_bars(fig3, "h", 0.3)
+
+# %% [markdown]
+# ## Checking the Percentage of the top 20 countries over the total number of consumption
+
+# %%
+Total_consumption = sum(consumption['Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)'])
+Total_top20_consumption = sum(consumption_Entity_top20['Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)'])
+Percentage_Total = round((Total_top20_consumption/Total_consumption) * 100, ndigits=2) 
+print("The top 20 countries consume %",Percentage_Total,"from the total consumption of seafood in the world")
+
+# %% [markdown]
+# ## Tracking the difference of the total production and total consumption
+# 
+
+# %% [markdown]
+# ### TOTALS WITH NO TIMLINE
+
+# %%
+#Adding a total production column
+captured_vs_farmed['Total_Production'] = captured_vs_farmed['Aquaculture_production_(metric_tons)'] + captured_vs_farmed['Capture_fisheries_production_(metric_tons)']
+
+#Grouping the captured/farmed table by entity
+captured_vs_farmed_group = captured_vs_farmed.groupby('Entity', as_index=False).agg({'Total_Production':'sum'})
+
+#Grouping the consumption table by entity
+consumption_group = consumption.groupby('Entity', as_index=False).agg({'Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)' : 'sum'})
+
+##Converting the Kg to Metric Tonnes
+consumption_group =  consumption_group.rename(columns={'Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)':'Total_consumption'})
+consumption_group['Total_consumption'] = consumption_group['Total_consumption']/1000
+
+##In order to be able to get and analyze the difference between the production and the consumption we need to get all the numbers in the same measuring units, so in this case we need to convert the kg/capita/yr to metric tonnes and in order to do that we will need the population number per year per country which we will get from https://data.worldbank.org/indicator/SP.POP.TOTL
+
+#Importing the Population data
+population_data = pd.read_excel("~/Desktop/Data Analysis Case Studies/Case Study 4/API_SP.POP.TOTL_DS2_en_excel_v2_3358348.xlsx", sheet_name=0, skiprows= 3)
+population_data = population_data.drop(['Indicator Name', 'Indicator Code'], axis = 1)
+population_data = population_data.melt(id_vars=['Country Name', 'Country Code'], var_name='Year', value_name='Population_count')
+population_data = population_data.rename(columns = {'Country Name':'Entity'})
+
+#Group the population table by Entity
+population_data_Group = population_data.groupby('Entity',as_index=False).agg({'Population_count':'mean'})
+population_data_Group = population_data_Group.rename(columns = {'Population_count':'Average_Population'})
+
+#Merging the Population_data with the Consumption_group
+Consumption_population_data = pd.merge(population_data_Group,consumption_group)
+Consumption_population_data['Total_Consumption(MetricTonnes)'] = Consumption_population_data['Total_consumption'] * Consumption_population_data['Average_Population']
+Consumption_population_data = Consumption_population_data[['Entity', 'Total_Consumption(MetricTonnes)']]
+
+#Merging the Consumption data with the captured/Farmed data ("Production" data)
+Cons_Prod_Diff = pd.merge(Consumption_population_data, captured_vs_farmed_group)
+Cons_Prod_Diff = Cons_Prod_Diff.round(decimals=0)
+
+#Creating a difference column which measures the difference between the production and the consumption per country
+Cons_Prod_Diff['Difference'] = Cons_Prod_Diff['Total_Production'] - Cons_Prod_Diff['Total_Consumption(MetricTonnes)']
+
+#Visualizing and Analyzing the Difference to see if there is a surplus or a deficit in the seafood production in the world
+Cons_Prod_Diff = Cons_Prod_Diff.melt(id_vars='Entity', var_name='Measure(MetricTones)', value_name="Value")
+Cons_Prod_Diff_group = Cons_Prod_Diff.groupby('Measure(MetricTones)', as_index=False).agg({'Value' : 'sum'})
+Cons_Prod_Diff_group = Cons_Prod_Diff_group[Cons_Prod_Diff_group['Measure(MetricTones)'] != 'Difference'] 
+mtpl.pyplot.pie(Cons_Prod_Diff_group['Value'], labels=Cons_Prod_Diff_group['Measure(MetricTones)'], shadow=True, autopct='%1.1f%%', textprops={'color':"w"})
+mtpl.pyplot.title('Total Production vs Total Consumption', color = 'w')
+mtpl.pyplot.show()
+
+# %% [markdown]
+# This shows clearly that there is a good amount of surpluss between what is produced vs what is consumed. The chart shows us that there is a surpluss of %23.6 of seafood which leads to an increase of waste or unedible expired products..etc. So this graph shows that the production of seafood in total is not being done in an efficient way.
+
+# %% [markdown]
+# ### TIMELINE DIFFERENCE OVER THE YEARS
+
+# %%
+#Grouping the captured/farmed table by entity and year (Production)
+captured_vs_farmed_TimeGroup = captured_vs_farmed.groupby(['Entity', 'Year'], as_index=False).agg({'Total_Production':'sum'})
+
+#Grouping the consumption table by entity and year (Consumption)
+consumption_TimeGroup = consumption.groupby(['Entity', 'Year'], as_index=False).agg({'Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)':'sum'})
+consumption_TimeGroup = consumption_TimeGroup.rename(columns = {'Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)': 'Total_Consumption'})
+consumption_TimeGroup['Total_Consumption'] = consumption_TimeGroup['Total_Consumption']/1000
+
+#Group the population table by Country Name
+population_data_TimeGroup = population_data.groupby(['Entity', 'Year'], as_index = False).agg({'Population_count':'sum'})
+population_data_TimeGroup['Year'] = population_data_TimeGroup['Year'].astype(int)
+
+#Merging the Population_data with the Consumption_group (TimeGroups)
+Consumption_population_TimeData = pd.merge(consumption_TimeGroup, population_data_TimeGroup)
+Consumption_population_TimeData = Consumption_population_TimeData[Consumption_population_TimeData['Total_Consumption'] != 0]
+Consumption_population_TimeData['Total_consumption (Metric Tones)'] = Consumption_population_TimeData['Total_Consumption'] * Consumption_population_TimeData['Population_count']
+Consumption_population_TimeData = Consumption_population_TimeData.drop(['Total_Consumption'],axis = 1)
+Consumption_population_TimeData['Total_consumption (Metric Tones)'] = round(Consumption_population_TimeData['Total_consumption (Metric Tones)'], ndigits=0)
+
+#Merging the Consumption data with the captured/Farmed data ("Production" data)
+Cons_Prod_TimeGroup = pd.merge(Consumption_population_TimeData, captured_vs_farmed_TimeGroup)
+
+#Creating a difference column which measures the difference between the production and the consumption per country
+Cons_Prod_TimeGroup['Difference'] = Cons_Prod_TimeGroup['Total_Production'] - Cons_Prod_TimeGroup['Total_consumption (Metric Tones)']
+Cons_Prod_TimeGroup = Cons_Prod_TimeGroup.rename(columns = {'Total_consumption (Metric Tones)':'Total_Consumption'})
+
+
+#Visualizing and Analyzing the Difference to see if there is a surplus or a deficit in the seafood production in the world
+df3 = Cons_Prod_TimeGroup.groupby(['Year'], as_index= False).sum()
+
+##Plot 1
+mtpl.pyplot.plot('Year', 'Total_Production', data= df3, marker="o")
+mtpl.pyplot.plot('Year', 'Total_Consumption', data= df3, marker="x")
+mtpl.pyplot.plot('Year', 'Difference', data= df3, marker="")
+mtpl.pyplot.legend()
+mtpl.pyplot.title('Production vs Consumption Difference')
+mtpl.pyplot.ylabel('Metric Tones (10^8)')
+mtpl.pyplot.grid(True)
+x = [1960, 1965, 1970,1975,1980,1985,1990,1995,2000,2005,2010,2015,2020]
+mtpl.pyplot.xticks(x,x)
+
+
+##Plot 2
+df3.plot('Year', 'Population_count')
+mtpl.pyplot.legend()
+mtpl.pyplot.title('Population Count Timeline')
+mtpl.pyplot.grid(True)
+x = [1960, 1965, 1970,1975,1980,1985,1990,1995,2000,2005,2010,2015,2020]
+mtpl.pyplot.xticks(x,x)
+
+
+# %% [markdown]
+# All the numbers in the above graphs show a significant increase from the 1960s till 2017, by all we are including the difference (surplus) of the production of total seafood in the world.
+# It seems that as the population increases along with the consumption, naturally, of seafood related products the production is increasing with a much higher pace than the population and the consumption, that's why there is always extra production hence paving the way of unnecessary waste, which has a negative side effect to the environment and aqua life, so it is very important to emphasize here on the control of the production of seafood to decrease the surplus of a huge ~50,000,000 metric tonnes per year of seafood.
+# 
+
+# %% [markdown]
+# ## Visualizing the Sustainable vs Overexploited fish throughout the years
+
+# %%
+df4 = stock.drop(['Code'], axis = 1)
+df4 = df4.rename(columns = {'Share of fish stocks within biologically sustainable levels (FAO, 2020)' : 'Sustainable',
+                                                'Share of fish stocks that are overexploited' : 'Overexploited'})
+#stock_pivoted = stock_pivoted.melt(id_vars= ['Year', 'Entity'], var_name = 'Description', value_name = 'Value')
+df4 = df4[df4['Entity']=='World']
+df4 = df4.groupby(['Year'], as_index=False).sum()
+
+mtpl.pyplot.plot('Year', 'Sustainable', data= df4, marker="o")
+mtpl.pyplot.plot('Year', 'Overexploited', data= df4, marker="x")
+mtpl.pyplot.legend()
+mtpl.pyplot.title('Sustainable vs Overexploited fish')
+mtpl.pyplot.ylabel('Value(%)')
+mtpl.pyplot.grid(True)
+x = [1975,1980,1985,1990,1995,2000,2005,2010,2015,2017]
+y = [0,10,20,30,40,50,60,70,80,90,100]
+mtpl.pyplot.xticks(x,x)
+mtpl.pyplot.yticks(y,y)
+
+# %% [markdown]
+# Starting from 1978 the sustainable Fish % is on almost a constant decrease starting from %91.46 till it reaches %65.85 in 2017 and in parallel the % of overexploited fish is increasing starting from 1978 with a % of 8.53 till it reaches %34.15 in 2017. So there's a change of %25.61 from 1978 till 2017, this indicates that with the increase of population the production is naturally increasing but not efficiently which is causing waste and overexploited fish, which is basically harming the aqua life and is probably causing an increase to global warming because of unncessary waste.
+
+# %% [markdown]
+# ## Visualizing the type of fisheries throughout the years
+
+# %%
+df5 = fishery.rename(columns = {'Artisanal (small-scale commercial)' : 'Artisanal (small-scale)',
+                                'Industrial (large-scale commercial)' : 'Industrial (large-scale)'})
+
+mtpl.pyplot.plot('Year', 'Artisanal (small-scale)', data= df5, linestyle = '-.', color = 'r')
+mtpl.pyplot.plot('Year', 'Discards', data= df5, linestyle = '-', color = 'b')
+mtpl.pyplot.plot('Year', 'Industrial (large-scale)', data= df5, linestyle = '--', color = 'y', linewidth = '2')
+mtpl.pyplot.plot('Year', 'Recreational', data= df5, linestyle = '--', color = 'k')
+mtpl.pyplot.plot('Year', 'Subsistence', data= df5, linestyle = 'dotted', color = 'g')
+mtpl.pyplot.legend()
+mtpl.pyplot.title('Fishery Type Productions')
+mtpl.pyplot.ylabel('Metric Tone')
+mtpl.pyplot.grid(True)
+x = [1950, 1955, 1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010]
+y = [5000000, 10000000,15000000,20000000,25000000,30000000,40000000,45000000,50000000,55000000,60000000,65000000,70000000,75000000,80000000,85000000,90000000,95000000]
+mtpl.pyplot.xticks(x,x)
+mtpl.pyplot.yticks(y,y)
+current_values = mtpl.pyplot.gca().get_yticks()
+mtpl.pyplot.gca().set_yticklabels(['{:,.0f}'.format(x) for x in current_values])
+
+# %% [markdown]
+# The graph is showing us here that the industrial (large scale) fisheries, even though are the largest, are slowly declining after 1996 reaching a level of 75 Million metric tones by 2010, but at the same time we see that throughout this 60 year span the Artisanal (small_scale) fisheries are increasing in fish quantity stored/produced. This shows us 2 things, first more people are starting to go fishing either by boat or on the shore which is causing them to consume less industrial produced fish related products. And second, since the demand is decreasing on the industrial fisheries the Discards are also decreasing after 1995, this means that the industries, with the affects of technology as well, are running more efficiently.
+
+
