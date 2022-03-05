@@ -348,4 +348,139 @@ mtpl.pyplot.gca().set_yticklabels(['{:,.0f}'.format(x) for x in current_values])
 # %% [markdown]
 # The graph is showing us here that the industrial (large scale) fisheries, even though are the largest, are slowly declining after 1996 reaching a level of 75 Million metric tones by 2010, but at the same time we see that throughout this 60 year span the Artisanal (small_scale) fisheries are increasing in fish quantity stored/produced. This shows us 2 things, first more people are starting to go fishing either by boat or on the shore which is causing them to consume less industrial produced fish related products. And second, since the demand is decreasing on the industrial fisheries the Discards are also decreasing after 1995, this means that the industries, with the affects of technology as well, are running more efficiently.
 
+Visualizing the types of fish production over the years
+Fish type Examples & Definition
 
+Pelagic Fish: Fish that inhabit not near the bottom or the shore of coasts, open oceans, and lakes. Examples of species include forage fish such as anchovies, sardines, shad, and menhaden and the predatory fish that feed on them.
+Crustaceans: Crustaceans form a large, diverse arthropod taxon which includes such animals as crabs, lobsters, crayfish, shrimp, krill, prawns, woodlice, barnacles, copepods, amphipods and mantis shrimp.
+Cephalopods: Are members of a class of marine animals that includes octopuses, squid, cuttlefish and nautiluses.
+Demersal Fish: Also known as groundfish, live and feed on or near the bottom of seas or lakes. They occupy the sea floors and lake beds, which usually consist of mud, sand, gravel or rocks.
+Freshwater fish: Are those that spend some or all of their lives in fresh water, such as rivers and lakes, with a salinity of less than 1.05%. These environments differ from marine conditions in many ways, the most obvious being the difference in levels of salinity.
+Molluscs Fish: Most molluscs have a hinged two-part shell and include clams, mussels, oysters, and scallops. ... Fish (e.g., trout, salmon), crustaceans (e.g., lobster, shrimp), and molluscs (e.g., scallops, clams) are sometimes collectively referred to as seafood.
+Marine Fish: Saltwater fish, also called marine fish, are fish that live in ocean water. Saltwater fish can swim and live alone or in a large group called a school. Saltwater fish are very commonly kept in aquariums for entertainment. Many saltwater fish are also caught to be eaten, or grown in aquaculture.
+
+# Removing the Regions and World from Data to avoid double counting
+production['Entity'] = production[~production['Entity'].isin(ToExclude)]
+#production = production.dropna()
+
+# Renaming column names into proper headers
+production = production.rename(columns={
+  "Commodity Balances - Livestock and Fish Primary Equivalent - Pelagic Fish - 2763 - Production - 5510 - tonnes" : "Pelagic Fish",
+  "Commodity Balances - Livestock and Fish Primary Equivalent - Crustaceans - 2765 - Production - 5510 - tonnes" : "Crustaceans",
+  "Commodity Balances - Livestock and Fish Primary Equivalent - Cephalopods - 2766 - Production - 5510 - tonnes" : "Cephalopods",
+  "Commodity Balances - Livestock and Fish Primary Equivalent - Demersal Fish - 2762 - Production - 5510 - tonnes" : "Demersal Fish",
+  "Commodity Balances - Livestock and Fish Primary Equivalent - Freshwater Fish - 2761 - Production - 5510 - tonnes" : "Freshwater Fish",
+  "Commodity Balances - Livestock and Fish Primary Equivalent - Molluscs, Other - 2767 - Production - 5510 - tonnes" : "Molluscs Fish",
+  "Commodity Balances - Livestock and Fish Primary Equivalent - Marine Fish, Other - 2764 - Production - 5510 - tonnes" : "Marine Fish"
+})
+
+# Visualizing the different types per year
+production = production
+production['Pelagic Fish'] = production['Pelagic Fish'].fillna(0)
+production['Crustaceans'] = production['Crustaceans'].fillna(0)
+production['Cephalopods'] = production['Cephalopods'].fillna(0)
+production['Demersal Fish'] = production['Demersal Fish'].fillna(0)
+production['Freshwater Fish'] = production['Freshwater Fish'].fillna(0)
+production['Molluscs Fish'] = production['Molluscs Fish'].fillna(0)
+production['Marine Fish'] = production['Marine Fish'].fillna(0)
+
+production_year = production.dropna()
+
+production_year_group = production_year.groupby('Year', as_index=False).sum()
+
+mtpl.pyplot.plot('Year', 'Pelagic Fish', data= production_year_group, linestyle = '-', color = 'r')
+mtpl.pyplot.plot('Year', 'Crustaceans', data= production_year_group, linestyle = '-', color = 'b')
+mtpl.pyplot.plot('Year', 'Cephalopods', data= production_year_group, linestyle = '--', color = 'y')
+mtpl.pyplot.plot('Year', 'Demersal Fish', data= production_year_group, linestyle = '-', color = 'k')
+mtpl.pyplot.plot('Year', 'Freshwater Fish', data= production_year_group, linestyle = '-', color = 'g')
+mtpl.pyplot.plot('Year', 'Molluscs Fish', data= production_year_group, linestyle = '-', color = 'y')
+mtpl.pyplot.plot('Year', 'Marine Fish', data= production_year_group, linestyle = '-.', color = 'r')
+mtpl.pyplot.legend()
+mtpl.pyplot.title('Fish Types')
+mtpl.pyplot.ylabel('Metric Tone')
+mtpl.pyplot.grid(True)
+x = [1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010,2013]
+y = [5000000, 10000000,15000000,20000000,25000000,30000000,40000000,45000000,50000000,56000000]
+mtpl.pyplot.xticks(x,x)
+mtpl.pyplot.yticks(y,y)
+current_values = mtpl.pyplot.gca().get_yticks()
+mtpl.pyplot.gca().set_yticklabels(['{:,.0f}'.format(x) for x in current_values])
+
+This graph shows us clearly that Freshwater Fish roduction has become a long way from being at medium production to being the most produced fhish by starting from 2005 and reaching a highest level in 2013 ~56Mn Metric Tones. Behind that follows the Pelagic fish and the Demersal fish which have been on an increase throughut the years, probably because of the increase in the demand (by population), but not at very sharp levels with a max of difference between the highest and the lowest points of ~33Mn Metric tones comparing to the increase by ~51Mn Metric tones of the Freshwater Fish. This concludes that people are aiming more to produce either natuarally or by aquaculture more Freshwater fish instead of seawater fish and other types.
+
+Visualizing the types of fish production per country (Top 20)
+General Manipulations
+# Getting the list of the top 20 Countries (Entities)
+production_year_Top20_Entities = production.groupby('Entity', as_index = False).sum()
+production_year_Top20_Entities = production_year_Top20_Entities.drop('Year', axis = 1)
+production_year_Top20_Entities['Total'] = production_year_Top20_Entities.iloc[:].sum(axis = 1)
+production_year_Top20_Entities = production_year_Top20_Entities.sort_values('Total',ascending=False).head(20)
+Top20Countries = production_year_Top20_Entities['Entity'].tolist()
+
+# Pivoting longer to have a all the categories and values under 2 columns
+production_year_Top20 = production_year
+production_year_Top20 = production_year_Top20.drop('Code', axis = 1)
+production_year_Top20 = production_year_Top20.melt(id_vars=['Entity', 'Year'], var_name = 'Fish Type', value_name = "Values (Metric Tones)")
+
+# Filtering the production_year_Top20 table witht the top 20 countries
+production_year_Top20['Entity'] = production_year_Top20[production_year_Top20['Entity'].isin(Top20Countries)]
+production_year_Top20 = production_year_Top20.dropna()
+
+# Scaling the numbers in millions for the visuals to be neater 
+production_year_Top20['Values (Metric Tones)'] = production_year_Top20['Values (Metric Tones)'].div(1000000)
+
+Visual 1
+p7 = production_year_Top20.groupby(['Entity', 'Year'], as_index=False).agg({'Values (Metric Tones)':"sum"})
+p7 = p7.pivot("Year","Entity","Values (Metric Tones)")
+p7.plot.area()
+#mtpl.pyplot.yticks(range(len("Entity")),"Values (Metric Tones)")
+mtpl.pyplot.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
+mtpl.pyplot.xlabel('Metric Tones (Millions)')
+x = [1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010,2013]
+mtpl.pyplot.xticks(x,x)
+
+Visual 2
+p8 = production_year.drop('Code', axis = 1)
+p8['Entity'] = p8[p8['Entity'].isin(Top20Countries)]
+p8 = p8.dropna()
+
+for c, t in p8.iteritems():
+    if c != 'Entity' and c != 'Year':
+        p8[c] = t/1000000
+p8 = p8.groupby('Entity', as_index=False).sum()
+p8 = p8.drop('Year', axis = 1)
+p8['Total'] = p8.iloc[:].sum(axis=1)
+p8 = p8.sort_values('Total', ascending = True)
+p8 = p8.drop('Total', axis = 1)
+
+w = 0.8
+Entity = []
+for c,d in p8['Entity'].iteritems():
+    Entity.append(d)
+
+p8v2 = mtpl.pyplot.barh(Entity, p8['Pelagic Fish'],w , label ='Pelagic Fish', color= '#8A360F')
+p8v3 = mtpl.pyplot.barh(Entity, p8['Molluscs Fish'],w , label ='Molluscs Fish', color='#FF6103', left = p8['Pelagic Fish'])
+p8v4 = mtpl.pyplot.barh(Entity, p8['Marine Fish'],w , label ='Marine Fish', color='#FF9912', left = p8['Pelagic Fish'] + p8['Molluscs Fish'])
+p8v5 = mtpl.pyplot.barh(Entity, p8['Freshwater Fish'],w , label ='Freshwater Fish', color='#7FFF00', left = p8['Pelagic Fish'] + p8['Molluscs Fish'] + p8['Marine Fish'])
+p8v6 = mtpl.pyplot.barh(Entity, p8['Demersal Fish'],w , label ='Demersal Fish', color='#76EEC6', left = p8['Pelagic Fish'] + p8['Molluscs Fish'] + p8['Marine Fish'] + p8['Freshwater Fish'])
+p8v7 = mtpl.pyplot.barh(Entity, p8['Crustaceans'],w , label ='Crustaceans', color='#00FFFF', left = p8['Pelagic Fish'] + p8['Molluscs Fish'] + p8['Marine Fish'] + p8['Freshwater Fish'] + p8['Demersal Fish'])
+p8v8 = mtpl.pyplot.barh(Entity, p8['Cephalopods'],w , label ='Cephalopods', color='black', left = p8['Pelagic Fish'] + p8['Molluscs Fish'] + p8['Marine Fish'] + p8['Freshwater Fish'] + p8['Demersal Fish'] + p8['Crustaceans'])
+mtpl.pyplot.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
+
+Visual 3
+p9 = copy.deepcopy(p8)
+
+fish_type = ['Pelagic Fish','Molluscs Fish', 'Marine Fish', 'Freshwater Fish', 'Demersal Fish', 'Crustaceans', 'Cephalopods']
+
+p9.loc[:,'Pelagic Fish':'Marine Fish'] = (p9.loc[:,'Pelagic Fish':'Marine Fish'].div(p9.sum(axis=1),axis=0))*100
+
+p9v2 = mtpl.pyplot.barh(Entity, p9['Pelagic Fish'],w , label ='Pelagic Fish', color= '#8A360F')
+p9v3 = mtpl.pyplot.barh(Entity, p9['Molluscs Fish'],w , label ='Molluscs Fish', color='#FF6103', left = p9['Pelagic Fish'])
+p9v4 = mtpl.pyplot.barh(Entity, p9['Marine Fish'],w , label ='Marine Fish', color='#FF9912', left = p9['Pelagic Fish'] + p9['Molluscs Fish'])
+p9v5 = mtpl.pyplot.barh(Entity, p9['Freshwater Fish'],w , label ='Freshwater Fish', color='#7FFF00', left = p9['Pelagic Fish'] + p9['Molluscs Fish'] + p9['Marine Fish'])
+p9v6 = mtpl.pyplot.barh(Entity, p9['Demersal Fish'],w , label ='Demersal Fish', color='#76EEC6', left = p9['Pelagic Fish'] + p9['Molluscs Fish'] + p9['Marine Fish'] + p9['Freshwater Fish'])
+p9v7 = mtpl.pyplot.barh(Entity, p9['Crustaceans'],w , label ='Crustaceans', color='#00FFFF', left = p9['Pelagic Fish'] + p9['Molluscs Fish'] + p9['Marine Fish'] + p9['Freshwater Fish'] + p9['Demersal Fish'])
+p9v8 = mtpl.pyplot.barh(Entity, p9['Cephalopods'],w , label ='Cephalopods', color='black', left = p9['Pelagic Fish'] + p9['Molluscs Fish'] + p9['Marine Fish'] + p9['Freshwater Fish'] + p9['Demersal Fish'] + p9['Crustaceans'])
+mtpl.pyplot.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
+
+The obvious country that is leading the seafood market in production is China with more than 1 Billion metric tones of seafood from 1960 till 2013 that is around 18.8 Million tones per year on average with the most increase happening staring from the 1990s. The leading type of fish for China's production is freshwater fish which again they lead in worldwide. It's also worth mentioning that Peru is the leader of Pelagic fish production worldwide producing more than 350 Million Tones in the past ~50 years.
